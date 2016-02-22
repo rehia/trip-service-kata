@@ -6,31 +6,41 @@ namespace TripServiceKata.Trip
 {
     public class TripService
     {
+        private readonly ITripDao tripDao;
+        private readonly IUserSession userSession;
+
+        public TripService() : this(new TripDAO(), UserSession.GetInstance())
+        { }
+
+        public TripService(ITripDao tripDao, IUserSession userSession)
+        {
+            this.tripDao = tripDao;
+            this.userSession = userSession;
+        }
+
         public List<Trip> GetTripsByUser(User.User user)
         {
-            List<Trip> tripList = new List<Trip>();
-            User.User loggedUser = UserSession.GetInstance().GetLoggedUser();
-            bool isFriend = false;
-            if (loggedUser != null)
-            {
-                foreach(User.User friend in user.GetFriends())
-                {
-                    if (friend.Equals(loggedUser))
-                    {
-                        isFriend = true;
-                        break;
-                    }
-                }
-                if (isFriend)
-                {
-                    tripList = TripDAO.FindTripsByUser(user);
-                }
-                return tripList;
-            }
-            else
+            var loggedUser = GetLoggedUser();
+            if (loggedUser == null)
             {
                 throw new UserNotLoggedInException();
             }
+
+            if (user.IsFriendWith(loggedUser))
+            {
+                return FindTripsByUser(user);
+            }
+            return new List<Trip>();
+        }
+
+        protected virtual List<Trip> FindTripsByUser(User.User user)
+        {
+            return tripDao.FindTripsByUserNonStatic(user);
+        }
+
+        protected virtual User.User GetLoggedUser()
+        {
+            return userSession.GetLoggedUser();
         }
     }
 }
